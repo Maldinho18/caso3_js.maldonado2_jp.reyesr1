@@ -85,7 +85,7 @@ public class CryptoUtils {
         return params.getParameterSpec(DHParameterSpec.class); 
     }
 
-    public static KeyPair generarDPHKeyPair(DHParameterSpec dhSpec) throws Exception {
+    public static KeyPair generarDHKeyPair(DHParameterSpec dhSpec) throws Exception {
         // Generar un par de claves (clave pública y privada) para el algoritmo DH
         KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("DH");
         keyPairGen.initialize(dhSpec);
