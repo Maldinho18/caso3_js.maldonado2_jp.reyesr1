@@ -1,5 +1,9 @@
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.AlgorithmParameterGenerator;
 import java.security.AlgorithmParameters;
+import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
@@ -8,7 +12,11 @@ import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.spec.AlgorithmParameterSpec;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
+import java.util.Base64;
+
 import javax.crypto.Cipher;
 import javax.crypto.KeyAgreement;
 import javax.crypto.Mac;
@@ -18,6 +26,24 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 public class CryptoUtils {
+
+    public static PrivateKey loadPrivateKey(String filePath) throws Exception {
+        String pem = new String(Files.readAllBytes(Paths.get(filePath)), StandardCharsets.UTF_8);
+        pem = pem.replace("-----BEGIN PRIVATE KEY-----", "").replace("-----END PRIVATE KEY-----", "").replaceAll("\\s+", "");
+        byte[] der = Base64.getDecoder().decode(pem);
+        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(der);
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        return keyFactory.generatePrivate(spec); 
+    }
+
+    public static PublicKey loadPublicKey(String filePath) throws Exception {
+        String pem = new String(Files.readAllBytes(Paths.get(filePath)), StandardCharsets.UTF_8);
+        pem = pem.replace("-----BEGIN PUBLIC KEY-----", "").replace("-----END PUBLIC KEY-----", "").replaceAll("\\s+", "");
+        byte[] der = Base64.getDecoder().decode(pem);
+        X509EncodedKeySpec spec = new X509EncodedKeySpec(der);
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        return keyFactory.generatePublic(spec); 
+    }
 
     public static byte[] aesEncriptar(byte[] plaintext, SecretKey key, IvParameterSpec iv) throws Exception {
         Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
@@ -92,7 +118,7 @@ public class CryptoUtils {
         return keyPairGen.generateKeyPair();
     }
 
-    public static byte[] generarLlaveCompartida(PrivateKey privateKey, PublicKey publicKey) throws Exception {
+    public static byte[] generarSecretoCompartido(PrivateKey privateKey, PublicKey publicKey) throws Exception {
         // Generar la clave compartida utilizando la clave privada y la clave pública del otro participante
         KeyAgreement keyAgreement = KeyAgreement.getInstance("DH");
         keyAgreement.init(privateKey);

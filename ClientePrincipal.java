@@ -16,8 +16,13 @@ import javax.crypto.spec.IvParameterSpec;
 
 public class ClientePrincipal {
 
+    public static PublicKey serverPublicKey;
+
     public static void main (String[] args){
         try {
+
+            serverPublicKey = CryptoUtils.loadPublicKey("public.key");
+
             Socket socket = new Socket("localhost", 9000);
             DataInputStream in = new DataInputStream(socket.getInputStream());
             DataOutputStream out = new DataOutputStream(socket.getOutputStream());
@@ -38,7 +43,7 @@ public class ClientePrincipal {
             out.writeInt(clientDHPubEnc.length);
             out.write(clientDHPubEnc);
 
-            byte[] sharedSecret = CryptoUtils.generarLlaveCompartida(clientDHPair.getPrivate(), serverDHPubKey);
+            byte[] sharedSecret = CryptoUtils.generarSecretoCompartido(clientDHPair.getPrivate(), serverDHPubKey);
             byte[] digest = CryptoUtils.computeSHA512(sharedSecret);
             SecretKey[] sessionKeys = CryptoUtils.deriveSessionKeys(digest);
             SecretKey aesKey = sessionKeys[0];
