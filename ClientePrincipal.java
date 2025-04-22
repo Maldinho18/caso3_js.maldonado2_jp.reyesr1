@@ -18,26 +18,29 @@ public class ClientePrincipal {
 
     public static PublicKey serverPublicKey;
 
-    public static void main (String[] args){
-        try {
-
-            serverPublicKey = CryptoUtils.loadPublicKey("public.key");
-
-            Socket socket = new Socket("localhost", 9000);
+    public static void main (String[] args) throws Exception {
+        serverPublicKey = CryptoUtils.loadPublicKey("public.key");
+        try (Socket socket = new Socket("localhost", 9000);
             DataInputStream in = new DataInputStream(socket.getInputStream());
-            DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-
+            DataOutputStream out = new DataOutputStream(socket.getOutputStream())){
+            
             BigInteger p = new BigInteger(in.readUTF()); 
             BigInteger g = new BigInteger(in.readUTF());
             DHParameterSpec dhSpec = new DHParameterSpec(p, g);
 
+            int lenS = in.readInt();
+            byte[] pubS = new byte[lenS];
+            in.readFully(pubS);
+            PublicKey serverDHPubKey = KeyFactory.getInstance("DH").generatePublic(new X509EncodedKeySpec(pubS));
+
+/** 
             int serverDHPublen = in.readInt();
             byte[] serverDHPub = new byte[serverDHPublen];
             in.readFully(serverDHPub);
             KeyFactory keyFactory = KeyFactory.getInstance("DH");
             X509EncodedKeySpec x509KeySpec = new X509EncodedKeySpec(serverDHPub);
             PublicKey serverDHPubKey = keyFactory.generatePublic(x509KeySpec);
-
+**/
             KeyPair clientDHPair = CryptoUtils.generarDHKeyPair(dhSpec);
             byte[] clientDHPubEnc = clientDHPair.getPublic().getEncoded();
             out.writeInt(clientDHPubEnc.length);
@@ -50,9 +53,9 @@ public class ClientePrincipal {
             SecretKey hmacKey = sessionKeys[1];
 
             int ivLen = in.readInt();
-            byte[] ivBytes = new byte[ivLen];
-            in.readFully(ivBytes);
-            IvParameterSpec iv = new IvParameterSpec(ivBytes);
+            byte[] ivTab = new byte[ivLen];
+            in.readFully(ivTab);
+            IvParameterSpec iv = new IvParameterSpec(ivTab);
 
             int sigLen = in.readInt();
             byte[] signature = new byte[sigLen];
@@ -71,9 +74,20 @@ public class ClientePrincipal {
             }
 
             byte[] tablaDes = CryptoUtils.aesDesencriptar(tablaCif, aesKey, iv);
+            if(!CryptoUtils.verificarSignature(tablaDes, signature, serverPublicKey)) {
+                System.out.println("Error: Firma no coincide.");
+                socket.close();
+                return;
+            }
             String tablaServicios = new String(tablaDes, "UTF-8");
             System.out.println("Tabla de servicios: " + tablaServicios);
 
+            String[] ent = tablaServicios.split(";");
+            List<Integer> ids = new ArrayList<>();
+            for (String e:ent) if (!e.isEmpty()) ids.add(Integer.parseInt(e.split(",")[0]));
+            int svc = ids.get(new Random().nextInt(ids.size()));
+            System.out.println("ID del servicio seleccionado: " + svc);
+/** 
             String[] entradas = tablaServicios.split(";");
             List<Integer> ids = new ArrayList<>();
             List<String> ips = new ArrayList<>();
@@ -92,12 +106,11 @@ public class ClientePrincipal {
             String servicioIp = ips.get(i);
             int servicioPuerto = puertos.get(i);
             System.out.println("ID del servicio seleccionado: " + serviciosId + " -> " + servicioIp + ":" + servicioPuerto);
+**/
 
-
-            byte[] consulta = String.valueOf(serviciosId).getBytes("UTF-8");
+            byte[] consulta = String.valueOf(svc).getBytes("UTF-8");
             byte[] hmacConsulta = CryptoUtils.calcularHMAC(consulta, hmacKey);
-
-            out.writeInt(serviciosId);
+            out.writeInt(svc);
             out.writeInt(hmacConsulta.length);
             out.write(hmacConsulta);
 
@@ -117,11 +130,7 @@ public class ClientePrincipal {
             byte[] respDes = CryptoUtils.aesDesencriptar(respCif, aesKey, iv);
             String resp = new String(respDes, "UTF-8");
             System.out.println("Respuesta del servidor: " + resp);
-
             socket.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        } 
     }
-    
 }
