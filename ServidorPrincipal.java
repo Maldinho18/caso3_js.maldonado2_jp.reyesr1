@@ -64,24 +64,22 @@ public class ServidorPrincipal {
                 int clientDHPubLen = in.readInt();
                 byte[] clientDHPubEnc = new byte[clientDHPubLen];
                 in.readFully(clientDHPubEnc);
-                KeyFactory keyFactory = KeyFactory.getInstance("DH");
-                X509EncodedKeySpec x509KeySpec = new X509EncodedKeySpec(clientDHPubEnc);
-                PublicKey clientDHPubKey = keyFactory.generatePublic(x509KeySpec);
-
-                byte[] sharedSecret = CryptoUtils.generarSecretoCompartido(serverDPHPair.getPrivate(), clientDHPubKey);
-                byte[] digest = CryptoUtils.computeSHA512(sharedSecret);
-                SecretKey[] sessionKeys = CryptoUtils.deriveSessionKeys(digest);
-                SecretKey aesKey = sessionKeys[0];
-                SecretKey hmacKey = sessionKeys[1];
+                PublicKey pubKeyCliente = KeyFactory.getInstance("DH").generatePublic(new X509EncodedKeySpec(clientDHPubEnc));
+                byte[] secreto = CryptoUtils.generarSecretoCompartido(
+                serverDPHPair.getPrivate(), pubKeyCliente);
+                byte[] digest = CryptoUtils.computeSHA512(secreto);
+                SecretKey[] keys = CryptoUtils.deriveSessionKeys(digest);
+                SecretKey aesKey = keys[0], hmacKey = keys[1];
 
                 IvParameterSpec iv = CryptoUtils.generateIV();
                 out.writeInt(iv.getIV().length);
                 out.write(iv.getIV());
 
                 StringBuilder sb = new StringBuilder();
-                for (Map.Entry<Integer, String[]> entry : servicios.entrySet()) {
-                    sb.append(entry.getKey()).append(",").append(entry.getValue()[0]).append(",").append(entry.getValue()[1]).append(";");
-                }
+                servicios.forEach((id, datos) -> sb.append(id)
+                .append(',').append(datos[0])
+                .append(',').append(datos[1]).append(';')
+                );
                 byte[] tablaBytes = sb.toString().getBytes("UTF-8");
 
                 long startSign = System.nanoTime();
@@ -125,19 +123,30 @@ public class ServidorPrincipal {
                 String respuesta = datosServicio[0] + "," + datosServicio[1];
                 byte[] respuestaBytes = respuesta.getBytes("UTF-8");
 
-                byte[] respuestaCifrada = CryptoUtils.aesEncriptar(respuestaBytes, aesKey, iv);
-                byte[] hmacRespuesta = CryptoUtils.calcularHMAC(respuestaCifrada, hmacKey);
+                long tasym1 = System.nanoTime();
+                byte[] respRSA = CryptoUtils.rsaEncrypt(respuestaBytes, publicKey);
+                long tasym2 = System.nanoTime();
 
-                out.writeInt(respuestaCifrada.length);
-                out.write(respuestaCifrada);
-                out.writeInt(hmacRespuesta.length);
-                out.write(hmacRespuesta);
+                IvParameterSpec ivResp = CryptoUtils.generateIV();
+                out.writeInt(ivResp.getIV().length);
+                out.write(ivResp.getIV());
 
-                System.out.println("Consulta Procesada. Tiempo de verificación (ns): " + tiempoVerificacion);
-            } catch (Exception e) {
-                e.printStackTrace();
+                long tsym1 = System.nanoTime();
+                byte[] respAES = CryptoUtils.aesEncriptar(respuestaBytes, aesKey, ivResp);
+                long tsym2 = System.nanoTime();
+                byte[] hmacResp = CryptoUtils.calcularHMAC(respAES, hmacKey);
+
+                out.writeInt(respAES.length); out.write(respAES);
+                out.writeInt(hmacResp.length); out.write(hmacResp);
+
+                System.out.println("Consulta procesada. Verif(ns):"+tiempoVerificacion
+                    +", CifSym(ns):"+(tsym2-tsym1)
+                    +", CifRSA(ns):"+(tasym2-tasym1));
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
             } finally {
-                try { socket.close(); } catch (IOException ioe) {}
+                try { socket.close(); } catch(IOException ignored) {}
             }
         }
     }
