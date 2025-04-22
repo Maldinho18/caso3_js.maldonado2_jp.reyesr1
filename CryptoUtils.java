@@ -125,4 +125,10 @@ public class CryptoUtils {
         keyAgreement.doPhase(publicKey, true);
         return keyAgreement.generateSecret();
     }
+
+    public static byte[] rsaEncriptar(byte[] data, PublicKey publicKey) throws Exception {
+        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+        return cipher.doFinal(data);
+    }
 }
