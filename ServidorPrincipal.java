@@ -139,9 +139,9 @@ public class ServidorPrincipal {
                 out.writeInt(respAES.length); out.write(respAES);
                 out.writeInt(hmacResp.length); out.write(hmacResp);
 
-                System.out.println("Consulta procesada. Verif(ns):"+tiempoVerificacion
-                    +", CifSym(ns):"+(tsym2-tsym1)
-                    +", CifRSA(ns):"+(tasym2-tasym1));
+                System.out.println("Consulta procesada. Tiempos(ns): Verifcación: "+tiempoVerificacion
+                    +", Cifrafo Simétrico: "+(tsym2-tsym1)
+                    +", Cifrado Asimétrico: "+(tasym2-tasym1));
 
             } catch (Exception ex) {
                 ex.printStackTrace();

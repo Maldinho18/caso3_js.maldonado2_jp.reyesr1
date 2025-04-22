@@ -99,7 +99,7 @@ public class CryptoUtils {
     }
 
     public static IvParameterSpec generateIV() {
-        byte[] iv = new byte[16]; // AES block size is 16 bytes
+        byte[] iv = new byte[16];
         new SecureRandom().nextBytes(iv);
         return new IvParameterSpec(iv);
     }
@@ -112,14 +112,12 @@ public class CryptoUtils {
     }
 
     public static KeyPair generarDHKeyPair(DHParameterSpec dhSpec) throws Exception {
-        // Generar un par de claves (clave pública y privada) para el algoritmo DH
         KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("DH");
         keyPairGen.initialize(dhSpec);
         return keyPairGen.generateKeyPair();
     }
 
     public static byte[] generarSecretoCompartido(PrivateKey privateKey, PublicKey publicKey) throws Exception {
-        // Generar la clave compartida utilizando la clave privada y la clave pública del otro participante
         KeyAgreement keyAgreement = KeyAgreement.getInstance("DH");
         keyAgreement.init(privateKey);
         keyAgreement.doPhase(publicKey, true);

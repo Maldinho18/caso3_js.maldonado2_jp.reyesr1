@@ -33,14 +33,6 @@ public class ClientePrincipal {
             in.readFully(pubS);
             PublicKey serverDHPubKey = KeyFactory.getInstance("DH").generatePublic(new X509EncodedKeySpec(pubS));
 
-/** 
-            int serverDHPublen = in.readInt();
-            byte[] serverDHPub = new byte[serverDHPublen];
-            in.readFully(serverDHPub);
-            KeyFactory keyFactory = KeyFactory.getInstance("DH");
-            X509EncodedKeySpec x509KeySpec = new X509EncodedKeySpec(serverDHPub);
-            PublicKey serverDHPubKey = keyFactory.generatePublic(x509KeySpec);
-**/
             KeyPair clientDHPair = CryptoUtils.generarDHKeyPair(dhSpec);
             byte[] clientDHPubEnc = clientDHPair.getPublic().getEncoded();
             out.writeInt(clientDHPubEnc.length);
@@ -87,26 +79,6 @@ public class ClientePrincipal {
             for (String e:ent) if (!e.isEmpty()) ids.add(Integer.parseInt(e.split(",")[0]));
             int svc = ids.get(new Random().nextInt(ids.size()));
             System.out.println("ID del servicio seleccionado: " + svc);
-/** 
-            String[] entradas = tablaServicios.split(";");
-            List<Integer> ids = new ArrayList<>();
-            List<String> ips = new ArrayList<>();
-            List<Integer> puertos = new ArrayList<>();
-            for (String e : entradas) {
-                if (e.trim().isEmpty()) continue; 
-                String[] campos = e.split(",");
-                ids.add(Integer.parseInt(campos[0]));
-                ips.add(campos[1]);
-                puertos.add(Integer.parseInt(campos[2]));
-            }
-
-            Random rand = new Random();
-            int i = rand.nextInt(ids.size());
-            int serviciosId = ids.get(i);
-            String servicioIp = ips.get(i);
-            int servicioPuerto = puertos.get(i);
-            System.out.println("ID del servicio seleccionado: " + serviciosId + " -> " + servicioIp + ":" + servicioPuerto);
-**/
 
             byte[] consulta = String.valueOf(svc).getBytes("UTF-8");
             byte[] hmacConsulta = CryptoUtils.calcularHMAC(consulta, hmacKey);
@@ -114,21 +86,25 @@ public class ClientePrincipal {
             out.writeInt(hmacConsulta.length);
             out.write(hmacConsulta);
 
+            int ivRespLen = in.readInt();
+            byte[] ivResp = new byte[ivRespLen];
+            in.readFully(ivResp);
+            IvParameterSpec ivRespSpec = new IvParameterSpec(ivResp);
+
             int respCiflen = in.readInt();
             byte[] respCif = new byte[respCiflen];
             in.readFully(respCif);
             int respHmacLen = in.readInt();
             byte[] respHmac = new byte[respHmacLen];
             in.readFully(respHmac);
-
             if (!CryptoUtils.verificarHMAC(respCif, hmacKey, respHmac)) {
                 System.out.println("Error: HMAC de la respuesta no coincide.");
                 socket.close();
                 return;
             }
-
-            byte[] respDes = CryptoUtils.aesDesencriptar(respCif, aesKey, iv);
+            byte[] respDes = CryptoUtils.aesDesencriptar(respCif, aesKey, ivRespSpec);
             String resp = new String(respDes, "UTF-8");
+
             System.out.println("Respuesta del servidor: " + resp);
             socket.close();
         } 
