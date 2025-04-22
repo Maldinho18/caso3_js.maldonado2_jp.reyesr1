@@ -124,7 +124,7 @@ public class ServidorPrincipal {
                 byte[] respuestaBytes = respuesta.getBytes("UTF-8");
 
                 long tasym1 = System.nanoTime();
-                byte[] respRSA = CryptoUtils.rsaEncrypt(respuestaBytes, publicKey);
+                byte[] respRSA = CryptoUtils.rsaEncriptar(respuestaBytes, publicKey);
                 long tasym2 = System.nanoTime();
 
                 IvParameterSpec ivResp = CryptoUtils.generateIV();
