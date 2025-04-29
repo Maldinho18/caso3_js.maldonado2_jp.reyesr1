@@ -146,7 +146,11 @@ public class ServidorPrincipal {
             } catch (Exception ex) {
                 ex.printStackTrace();
             } finally {
-                try { socket.close(); } catch(IOException ignored) {}
+                try { socket.close(); 
+                
+                } catch(IOException ignored) {
+                    ignored.printStackTrace();
+                }
             }
         }
     }
